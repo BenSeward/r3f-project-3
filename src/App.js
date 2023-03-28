@@ -1,25 +1,68 @@
-import logo from './logo.svg';
-import './App.css';
+import React, { Suspense, useRef } from "react";
+import { Canvas, useFrame } from "@react-three/fiber";
+import { Box } from "@react-three/drei";
+import * as THREE from "three";
+import {
+  Physics,
+  Debug,
+  RigidBody,
+  RigidBodyApi,
+  HeightfieldCollider,
+  HeightfieldArgs,
+} from "@react-three/rapier";
+import { Ground } from "./components/Ground";
+import { Player } from "./components/Player";
+import { useKeyboard } from "./hooks/useKeyboard";
+import { useMouseCapture } from "./hooks/useMouseCapture";
 
-function App() {
+function Ball({ position }) {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <RigidBody colliders="ball" position={position}>
+      <mesh>
+        <sphereGeometry args={[2, 24, 24, 8]} />
+        <meshStandardMaterial />
+      </mesh>
+    </RigidBody>
   );
 }
 
-export default App;
+// this could be inlined but into player but thinking about how to support multiple input types
+function getInput(keyboard, mouse) {
+  let [x, y, z] = [0, 0, 0];
+  if (keyboard["s"]) z += 1.0;
+  if (keyboard["w"]) z -= 1.0;
+  if (keyboard["d"]) x += 1.0;
+  if (keyboard["a"]) x -= 1.0;
+  if (keyboard[" "]) y += 1.0;
+
+  return {
+    move: [x, y, z],
+    look: [mouse.x / window.innerWidth, mouse.y / window.innerHeight],
+    running: keyboard["Shift"],
+  };
+}
+
+const Scene = () => {
+  const keyboard = useKeyboard();
+  const mouse = useMouseCapture();
+  return (
+    <Suspense fallback={null}>
+      <Physics>
+        <Debug />
+        <Ball position={[6, 8, 0]} />
+        <Ground displacementOffset={-20} displacementScale={80} />
+        <Player walk={5} jump={5} input={() => getInput(keyboard, mouse)} />
+      </Physics>
+    </Suspense>
+  );
+};
+
+export default function App() {
+  return (
+    <Canvas camera={{ position: [0, 40, 40] }}>
+      <ambientLight intensity={0.5} />
+      <directionalLight />
+      <Scene />
+    </Canvas>
+  );
+}
